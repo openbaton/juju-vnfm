@@ -56,15 +56,15 @@ function start_rabbitmq {
 }
 
 function check_already_running {
-    pgrep -f generic-vnfm-${_version}.jar
+    pgrep -f juju-vnfm-${_version}.jar
     if [ "$?" -eq "0" ]; then
-        echo "generic-vnfm is already running.."
+        echo "Juju-VNFM is already running.."
         exit;
     fi
 }
 
 function start {
-    echo "Starting the Generic-VNFM"
+    echo "Starting the Juju-VNFM"
     # if not compiled, compile
     if [ ! -d ${_juju_vnfm_base}/build/  ]
         then
@@ -103,7 +103,7 @@ function restart {
 
 
 function kill {
-    pkill -f generic-vnfm-${_version}.jar
+    pkill -f juju-vnfm-${_version}.jar
 }
 
 
