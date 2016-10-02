@@ -367,22 +367,20 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       }
     }
 
-    (new File("/tmp/openbaton/juju/" + nsId + "/" + "scripts/" + vnfr.getName())).mkdirs();
+    (new File("/tmp/openbaton/juju/" + nsId + "/" + vnfr.getName() + "/" + "scripts/")).mkdirs();
     if (vnfPackage.getScriptsLink() != null && !vnfPackage.getScriptsLink().equals("")) {
       downloadGitRepo(nsId, vnfPackage.getScriptsLink(), vnfr.getName());
     } else {
       Set<Script> scripts = vnfPackage.getScripts();
-      (new File("/tmp/openbaton/juju/" + nsId + "/" + "scripts/" + vnfr.getName() + "/scriptDir"))
-          .mkdirs();
       for (Script script : scripts) {
         File scriptFile =
             new File(
                 "/tmp/openbaton/juju/"
                     + nsId
                     + "/"
-                    + "scripts/"
                     + vnfr.getName()
-                    + "/scriptDir/"
+                    + "/"
+                    + "scripts/"
                     + script.getName());
         if (!scriptFile.exists()) scriptFile.createNewFile();
         try {
@@ -401,13 +399,13 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
 
     // didn't use one for loop containing all lifecycle checks to ensure the order of processing
     for (LifecycleEvent le : vnfr.getLifecycle_event()) {
-      // copy lifecycle scripts into charm
-      copyLifecycleScripts(le, le.getEvent(), vnfr.getName(), nsId);
+      // copy lifecycle scripts into charm TODO remove
+      //      copyLifecycleScripts(le, le.getEvent(), vnfr.getName(), nsId);
 
       if (le.getEvent().equals(Event.INSTANTIATE)) {
         log.debug("Found INSTANTIATE lifecycle event in VNF " + vnfr.getName());
 
-        prepareLifecycleScript("install", nsId, vnfr.getName(), le, "instantiateScripts");
+        prepareLifecycleScript("install", nsId, vnfr.getName(), le);
 
         if (!networkService.vnfIsTarget(
             vnfr.getName())) { // append configure scripts to the install hook
@@ -419,12 +417,12 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                       + nsId
                       + "/"
                       + vnfr.getName()
-                      + "/hooks/runConfigureScripts");
+                      + "/scripts/runConfigureScripts");
           if (!runConfigureScripts.exists()) {
             runConfigureScripts.createNewFile();
             Files.setPosixFilePermissions(runConfigureScripts.toPath(), permissions);
           }
-          String fileContent = "bash hooks/runConfigureScripts\n";
+          String fileContent = "bash runConfigureScripts\n";
           try {
             Files.write(
                 Paths.get(install.getAbsolutePath()),
@@ -453,14 +451,14 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                       + nsId
                       + "/"
                       + vnfr.getName()
-                      + "/hooks/runConfigureScripts");
+                      + "/scripts/runConfigureScripts");
           if (!install.exists()) {
             install.createNewFile();
             Files.setPosixFilePermissions(install.toPath(), permissions);
             if (!runConfigureScripts.exists()) {
               runConfigureScripts.createNewFile();
               Files.setPosixFilePermissions(runConfigureScripts.toPath(), permissions);
-              String fileContent = "bash hooks/runConfigureScripts\n";
+              String fileContent = "bash runConfigureScripts\n";
               try {
                 Files.write(
                     Paths.get(install.getAbsolutePath()),
@@ -471,8 +469,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
               }
             }
           }
-          prepareLifecycleScript(
-              "runConfigureScripts", nsId, vnfr.getName(), le, "configureScripts");
+          prepareLifecycleScript("runConfigureScripts", nsId, vnfr.getName(), le);
 
         } else { // create relation-changed hooks for the configure scripts
           List<File> relationChangedList = new LinkedList<>();
@@ -506,9 +503,9 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                 try {
                   Files.write(
                       Paths.get(relationChanged.getAbsolutePath()),
-                      ("bash hooks/configureScripts/"
+                      ("pushd scripts \nbash " // TODO test
                               + scriptName
-                              + "\ntouch hooks/finishedConfigureScripts/"
+                              + "\npopd \ntouch hooks/finishedConfigureScripts/"
                               + scriptName
                               + "\n")
                           .getBytes(),
@@ -529,14 +526,14 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                           + nsId
                           + "/"
                           + vnfr.getName()
-                          + "/hooks/runConfigureScripts");
+                          + "/scripts/runConfigureScripts");
               if (!install.exists()) {
                 install.createNewFile();
                 Files.setPosixFilePermissions(install.toPath(), permissions);
                 if (!runConfigureScripts.exists()) {
                   runConfigureScripts.createNewFile();
                   Files.setPosixFilePermissions(runConfigureScripts.toPath(), permissions);
-                  String fileContent = "bash hooks/runConfigureScripts\n";
+                  String fileContent = "bash runConfigureScripts\n";
                   try {
                     Files.write(
                         Paths.get(install.getAbsolutePath()),
@@ -550,7 +547,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
               try {
                 Files.write(
                     Paths.get(runConfigureScripts.getAbsolutePath()),
-                    ("bash hooks/configureScripts/" + scriptName + "\n").getBytes(),
+                    ("bash " + scriptName + "\n").getBytes(), // TODO test
                     StandardOpenOption.APPEND);
               } catch (IOException e) {
                 log.error("Could not write to runConfigureScripts file");
@@ -566,7 +563,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                         + nsId
                         + "/"
                         + vnfr.getName()
-                        + "/hooks/startAfterDependencies");
+                        + "/scripts/startAfterDependencies");
             (new File(
                     "/tmp/openbaton/juju/"
                         + nsId
@@ -580,7 +577,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                   Paths.get(f.getAbsolutePath()),
                   ("if [ $(ls -1 hooks/finishedConfigureScripts/ | wc -l) -eq "
                           + numberOfConfigureScripts
-                          + " ]; then bash hooks/startAfterDependencies; fi\n")
+                          + " ]; then\ncd scripts \nbash startAfterDependencies; \nfi\n")
                       .getBytes(),
                   StandardOpenOption.APPEND);
             }
@@ -595,11 +592,10 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
 
         if (networkService.vnfIsTarget(vnfr.getName())) {
           log.info(vnfr.getName() + " is target of a dependency");
-          prepareLifecycleScript(
-              "startAfterDependencies", nsId, vnfr.getName(), le, "startScripts");
+          prepareLifecycleScript("startAfterDependencies", nsId, vnfr.getName(), le);
         } else {
           // charm is not target of a relation, you can map the Open Baton start lifecycle to the Juju start hook
-          prepareLifecycleScript("start", nsId, vnfr.getName(), le, "startScripts");
+          prepareLifecycleScript("start", nsId, vnfr.getName(), le);
         }
       }
     }
@@ -608,7 +604,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
 
       if (le.getEvent().equals(Event.TERMINATE)) {
         log.debug("Found TERMINATE lifecycle event in VNF " + vnfr.getName());
-        prepareLifecycleScript("stop", nsId, vnfr.getName(), le, "terminateScripts");
+        prepareLifecycleScript("stop", nsId, vnfr.getName(), le);
       }
     }
 
@@ -622,18 +618,16 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
 
   /**
    * Write the lifecycle scripts into a special directory in the charm so that they can be called by
-   * the charm hooks.
+   * the charm hooks. TODO
    *
    * @param fileName
    * @param nsId
    * @param vnfName
    * @param le
-   * @param dirName
    * @throws Exception
    */
   private void prepareLifecycleScript(
-      String fileName, String nsId, String vnfName, LifecycleEvent le, String dirName)
-      throws Exception {
+      String fileName, String nsId, String vnfName, LifecycleEvent le) throws Exception {
     File file = new File("/tmp/openbaton/juju/" + nsId + "/" + vnfName + "/hooks/" + fileName);
     if (!file.exists()) {
       file.createNewFile();
@@ -641,8 +635,8 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
     }
 
     String fileContent = "#!/bin/bash\nsource hooks/paramVariables\n";
-    for (String scriptName : le.getLifecycle_events())
-      fileContent += ("bash hooks/" + dirName + "/" + scriptName + "\n");
+    fileContent += ("cd scripts\n");
+    for (String scriptName : le.getLifecycle_events()) fileContent += ("bash " + scriptName + "\n");
     try {
       Files.write(
           Paths.get(file.getAbsolutePath()), fileContent.getBytes(), StandardOpenOption.APPEND);
@@ -701,14 +695,14 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       }
     }
 
-    // now the out-of-the-box variables <netname>, <netname>_floatingIp and hostname
+    // now the out-of-the-box variables <netname>, <netname>_floatingIp and hostname of the other VNFDs
     String variables = "";
     for (String sourceVnfName : getNetworkService(nsId).getSourcesNames(vnfr.getName())) {
       VirtualNetworkFunctionRecord sourceVnfr =
           getNetworkService(nsId).getVnfrByName(sourceVnfName);
 
       List<String> virtuaLinks = new LinkedList<>();
-      for (VirtualDeploymentUnit vdu : vnfr.getVdu()) {
+      for (VirtualDeploymentUnit vdu : sourceVnfr.getVdu()) {
         for (VNFComponent vnfc : vdu.getVnfc()) {
           for (VNFDConnectionPoint cp : vnfc.getConnection_point()) {
             virtuaLinks.add(cp.getVirtual_link_reference());
@@ -762,10 +756,12 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
             "-c",
             "cd /tmp/openbaton/juju/"
                 + nsId
-                + "/scripts/"
+                + "/"
                 + vnfdName
+                + "/scripts"
                 + " && git clone "
-                + scriptsLink);
+                + scriptsLink
+                + " .");
     Process execute = null;
     int exitStatus = -1;
     try {
@@ -776,8 +772,10 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    if (exitStatus == 0) log.info("Successfully fetched git repository");
-    else log.error("Could not fetch git repository");
+    if (exitStatus == 0) {
+      log.info("Successfully fetched git repository");
+      (new File("/tmp/openbaton/juju/" + nsId + "/" + vnfdName + "/scripts/.git")).delete();
+    } else log.error("Could not fetch git repository");
   }
 
   /**
