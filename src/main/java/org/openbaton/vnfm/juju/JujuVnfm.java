@@ -381,6 +381,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                 + "\n";
       }
 
+      variables += "relation-set allRelationParametersAreReady=true\n";
       variables +=
           "echo \"`date '+%H-%M-%S'` "
               + vnfr.getName()
@@ -583,7 +584,16 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                   try {
                     Files.write(
                         Paths.get(relationChanged.getAbsolutePath()),
-                        ("#!/bin/bash\necho \"`date '+%H-%M-%S'` "
+                        ("#!/bin/bash\nexport allRelationParametersAreReady=`relation-get allRelationParametersAreReady`\nif [ \"$allRelationParametersAreReady\" != \"true\" ]; then\n  echo \"`date '+%H-%M-%S'` "
+                                + vnfr.getName()
+                                + ": The relation parameters are not yet set. Abort "
+                                + virtualNetworkFunctionRecord.getName()
+                                + "-relation-changed hook and try again later.\" >> "
+                                + scriptLogPath
+                                + "/"
+                                + vnfr.getName()
+                                + "\n  exit 0\nfi\n"
+                                + "echo \"`date '+%H-%M-%S'` "
                                 + vnfr.getName()
                                 + ": execute "
                                 + virtualNetworkFunctionRecord.getName()
@@ -887,7 +897,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       log.info("Write SCRIPTS_PATH to paramVariables file");
       Files.write(
           Paths.get(paramVariables.getAbsolutePath()),
-          ("export SCRIPTS_PATH=" + scriptPath).getBytes(),
+          ("export SCRIPTS_PATH=" + scriptPath + "\n").getBytes(),
           StandardOpenOption.APPEND);
     } catch (IOException e) {
       log.error("Could not write SCRIPTS_PATH paramVariables file");
