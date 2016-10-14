@@ -21,6 +21,7 @@ import org.openbaton.common.vnfm_sdk.exception.VnfmSdkException;
 import org.openbaton.common.vnfm_sdk.utils.VnfmUtils;
 import org.openbaton.vnfm.juju.utils.InterfaceMap;
 import org.openbaton.vnfm.juju.utils.NetworkService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -43,6 +44,20 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
   private Map<String, NetworkService> networkServiceMap;
 
   private Set<PosixFilePermission> permissions;
+
+  @Value("${vnfm.script-path:/opt/openbaton/scripts}")
+  private String scriptPath;
+
+  public String getScriptLogPath() {
+    return scriptLogPath;
+  }
+
+  public void setScriptLogPath(String scriptLogPath) {
+    this.scriptLogPath = scriptLogPath;
+  }
+
+  @Value("${vnfm.script.logfile:/var/log/openbaton/scriptsLog}")
+  private String scriptLogPath;
 
   public JujuVnfm() {
     super();
@@ -331,7 +346,16 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                   + "-relation-joined");
       relationJoined.createNewFile();
 
-      String variables = "#!/bin/bash\n";
+      String variables =
+          "#!/bin/bash\necho \"`date '+%H-%M-%S'` "
+              + vnfr.getName()
+              + ": execute "
+              + vnfr.getName()
+              + "-relation-joined hook\" >> "
+              + scriptLogPath
+              + "/"
+              + vnfr.getName()
+              + "\n";
       List<String> virtuaLinks = new LinkedList<>();
       for (VirtualDeploymentUnit vdu : vnfr.getVdu()) {
         for (VNFComponent vnfc : vdu.getVnfc()) {
@@ -341,9 +365,9 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
         }
       }
       for (String vl : virtuaLinks)
-        variables += ("relation-set " + vl + "=`unit-get private-address`;\n");
+        variables += ("relation-set " + vl + "=`unit-get private-address`\n");
       // TODO floating ips
-      variables += "relation-set hostname=`hostname`;\n";
+      variables += "relation-set hostname=`hostname`\n";
 
       for (ConfigurationParameter confParam :
           vnfr.getConfigurations().getConfigurationParameters()) {
@@ -354,8 +378,19 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                 + confParam.getConfKey()
                 + "="
                 + confParam.getValue()
-                + ";\n";
+                + "\n";
       }
+
+      variables +=
+          "echo \"`date '+%H-%M-%S'` "
+              + vnfr.getName()
+              + ": finished "
+              + vnfr.getName()
+              + "-relation-joined hook\" >> "
+              + scriptLogPath
+              + "/"
+              + vnfr.getName()
+              + "\n";
 
       try {
         Files.write(
@@ -397,6 +432,48 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
     // file containing the environment variable declarations; can be sourced by scripts
     createEnvironmentVariableFile(nsId, vnfr);
 
+    // create install hook to handle the script path if there is no INSTANTIATE lifecycle event
+    boolean installExists = false;
+    for (LifecycleEvent le : vnfr.getLifecycle_event()) {
+      if (le.getEvent().equals(Event.INSTANTIATE)) {
+        installExists = true;
+        break;
+      }
+    }
+    if (!installExists) {
+      File file = new File("/tmp/openbaton/juju/" + nsId + "/" + vnfr.getName() + "/hooks/install");
+      if (!file.exists()) {
+        file.createNewFile();
+        Files.setPosixFilePermissions(file.toPath(), permissions);
+      }
+      String fileContent =
+          "#!/bin/bash\necho \"`date '+%H-%M-%S'` "
+              + vnfr.getName()
+              + ": execute install hook\" >> "
+              + scriptLogPath
+              + "/"
+              + vnfr.getName()
+              + "\nmkdir -p "
+              + scriptPath
+              + "\ncp -r scripts/* "
+              + scriptPath
+              + "\nmkdir -p "
+              + scriptLogPath
+              + "\necho \"`date '+%H-%M-%S'` "
+              + vnfr.getName()
+              + ": finished install hook\" >> "
+              + scriptLogPath
+              + "/"
+              + vnfr.getName()
+              + "\n";
+      try {
+        Files.write(
+            Paths.get(file.getAbsolutePath()), fileContent.getBytes(), StandardOpenOption.APPEND);
+      } catch (IOException e) {
+        log.error("Could not write to install file");
+      }
+    }
+
     // didn't use one for loop containing all lifecycle checks to ensure the order of processing
     for (LifecycleEvent le : vnfr.getLifecycle_event()) {
       // copy lifecycle scripts into charm TODO remove
@@ -405,7 +482,18 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       if (le.getEvent().equals(Event.INSTANTIATE)) {
         log.debug("Found INSTANTIATE lifecycle event in VNF " + vnfr.getName());
 
-        prepareLifecycleScript("install", nsId, vnfr.getName(), le);
+        prepareLifecycleScript(
+            "install",
+            nsId,
+            vnfr.getName(),
+            le,
+            "mkdir -p "
+                + scriptPath
+                + "\ncp -r scripts/* "
+                + scriptPath
+                + "\nmkdir -p "
+                + scriptLogPath,
+            "");
 
         if (!networkService.vnfIsTarget(
             vnfr.getName())) { // append configure scripts to the install hook
@@ -422,6 +510,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
             runConfigureScripts.createNewFile();
             Files.setPosixFilePermissions(runConfigureScripts.toPath(), permissions);
           }
+          //TODO
           String fileContent = "bash runConfigureScripts\n";
           try {
             Files.write(
@@ -458,6 +547,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
             if (!runConfigureScripts.exists()) {
               runConfigureScripts.createNewFile();
               Files.setPosixFilePermissions(runConfigureScripts.toPath(), permissions);
+              //TODO
               String fileContent = "bash runConfigureScripts\n";
               try {
                 Files.write(
@@ -493,7 +583,17 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                   try {
                     Files.write(
                         Paths.get(relationChanged.getAbsolutePath()),
-                        ("#!/bin/bash\nsource hooks/relationVariables\n").getBytes(),
+                        ("#!/bin/bash\necho \"`date '+%H-%M-%S'` "
+                                + vnfr.getName()
+                                + ": execute "
+                                + virtualNetworkFunctionRecord.getName()
+                                + "-relation-changed hook"
+                                + "\" >> "
+                                + scriptLogPath
+                                + "/"
+                                + vnfr.getName()
+                                + "\nsource hooks/paramVariables\nsource hooks/relationVariables\n")
+                            .getBytes(),
                         StandardOpenOption.APPEND);
                   } catch (IOException e) {
                     log.error("Could not write to relationChanged file");
@@ -533,6 +633,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                 if (!runConfigureScripts.exists()) {
                   runConfigureScripts.createNewFile();
                   Files.setPosixFilePermissions(runConfigureScripts.toPath(), permissions);
+                  //TODO
                   String fileContent = "bash runConfigureScripts\n";
                   try {
                     Files.write(
@@ -575,9 +676,24 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
             for (File f : relationChangedList) {
               Files.write(
                   Paths.get(f.getAbsolutePath()),
-                  ("if [ $(ls -1 hooks/finishedConfigureScripts/ | wc -l) -eq "
+                  ("echo \"`date '+%H-%M-%S'` "
+                          + vnfr.getName()
+                          + ": Need "
                           + numberOfConfigureScripts
-                          + " ]; then\ncd scripts \nbash startAfterDependencies; \nfi\n")
+                          + " scripts run before executing startAfterDependencies. Currently there were run $(ls -1 hooks/finishedConfigureScripts/ | wc -l)\" >> "
+                          + scriptLogPath
+                          + "/"
+                          + vnfr.getName()
+                          + "\n"
+                          + "if [ $(ls -1 hooks/finishedConfigureScripts/ | wc -l) -eq "
+                          + numberOfConfigureScripts
+                          + " ]; then\necho \"`date '+%H-%M-%S'` "
+                          + vnfr.getName()
+                          + ": Trigger startAfterDependencies\" >> "
+                          + scriptLogPath
+                          + "/"
+                          + vnfr.getName()
+                          + "\nbash hooks/startAfterDependencies; \nfi\n")
                       .getBytes(),
                   StandardOpenOption.APPEND);
             }
@@ -634,9 +750,114 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       Files.setPosixFilePermissions(file.toPath(), permissions);
     }
 
-    String fileContent = "#!/bin/bash\nsource hooks/paramVariables\n";
+    String fileContent =
+        "#!/bin/bash\necho \"`date '+%H-%M-%S'` "
+            + vnfName
+            + ": execute "
+            + fileName
+            + " hook\" >> "
+            + scriptLogPath
+            + "/"
+            + vnfName
+            + "\nsource hooks/paramVariables\n";
     fileContent += ("cd scripts\n");
-    for (String scriptName : le.getLifecycle_events()) fileContent += ("bash " + scriptName + "\n");
+    for (String scriptName : le.getLifecycle_events())
+      fileContent +=
+          ("echo \"`date '+%H-%M-%S'` "
+              + vnfName
+              + ": execute "
+              + scriptName
+              + "\" >> "
+              + scriptLogPath
+              + "/"
+              + vnfName
+              + "\nbash "
+              + scriptName
+              + "\necho \"`date '+%H-%M-%S'` "
+              + vnfName
+              + ": finished "
+              + scriptName
+              + "\" >> "
+              + scriptLogPath
+              + "/"
+              + vnfName
+              + "\n");
+    fileContent +=
+        "echo \"`date '+%H-%M-%S'` "
+            + vnfName
+            + ": finished "
+            + fileName
+            + " hook\" >> "
+            + scriptLogPath
+            + "/"
+            + vnfName
+            + "\n";
+    try {
+      Files.write(
+          Paths.get(file.getAbsolutePath()), fileContent.getBytes(), StandardOpenOption.APPEND);
+    } catch (IOException e) {
+      log.error("Could not write to " + fileName + " file");
+    }
+  }
+
+  private void prepareLifecycleScript(
+      String fileName,
+      String nsId,
+      String vnfName,
+      LifecycleEvent le,
+      String preamble,
+      String postamble)
+      throws IOException {
+    File file = new File("/tmp/openbaton/juju/" + nsId + "/" + vnfName + "/hooks/" + fileName);
+    if (!file.exists()) {
+      file.createNewFile();
+      Files.setPosixFilePermissions(file.toPath(), permissions);
+    }
+
+    String fileContent =
+        "#!/bin/bash\n"
+            + preamble
+            + "\necho \"`date '+%H-%M-%S'` "
+            + vnfName
+            + ": execute "
+            + fileName
+            + " hook\" >> "
+            + scriptLogPath
+            + "/"
+            + vnfName
+            + "\nsource hooks/paramVariables\n";
+    fileContent += ("cd scripts\n");
+    for (String scriptName : le.getLifecycle_events())
+      fileContent +=
+          ("echo \"`date '+%H-%M-%S'` "
+              + vnfName
+              + ": execute "
+              + scriptName
+              + "\" >> "
+              + scriptLogPath
+              + "/"
+              + vnfName
+              + "\nbash "
+              + scriptName
+              + "\necho \"`date '+%H-%M-%S'` "
+              + vnfName
+              + ": finished "
+              + scriptName
+              + "\" >> "
+              + scriptLogPath
+              + "/"
+              + vnfName);
+    fileContent +=
+        postamble
+            + "\necho \"`date '+%H-%M-%S'` "
+            + vnfName
+            + ": finished "
+            + fileName
+            + " hook\" >> "
+            + scriptLogPath
+            + "/"
+            + vnfName
+            + "\n";
     try {
       Files.write(
           Paths.get(file.getAbsolutePath()), fileContent.getBytes(), StandardOpenOption.APPEND);
@@ -662,6 +883,15 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       paramVariables.createNewFile();
       Files.setPosixFilePermissions(paramVariables.toPath(), permissions);
     }
+    try {
+      log.info("Write SCRIPTS_PATH to paramVariables file");
+      Files.write(
+          Paths.get(paramVariables.getAbsolutePath()),
+          ("export SCRIPTS_PATH=" + scriptPath).getBytes(),
+          StandardOpenOption.APPEND);
+    } catch (IOException e) {
+      log.error("Could not write SCRIPTS_PATH paramVariables file");
+    }
     File relationVariables =
         new File("/tmp/openbaton/juju/" + nsId + "/" + vnfr.getName() + "/hooks/relationVariables");
     if (!relationVariables.exists()) {
@@ -673,7 +903,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       Configuration configuration = vnfr.getConfigurations();
       String variables = "";
       for (ConfigurationParameter parameter : configuration.getConfigurationParameters()) {
-        variables += "export " + parameter.getConfKey() + "=" + parameter.getValue() + ";\n";
+        variables += "export " + parameter.getConfKey() + "=" + parameter.getValue() + "\n";
       }
       try {
         log.info("Write variables to paramVariables file: " + variables);
@@ -695,8 +925,31 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       }
     }
 
-    // now the out-of-the-box variables <netname>, <netname>_floatingIp and hostname of the other VNFDs
+    // now the out-of-the-box variables <netname>, <netname>_floatingIp and hostname of the VNFD itself
     String variables = "";
+    List<String> virtualLinks = new LinkedList<>();
+    for (VirtualDeploymentUnit vdu : vnfr.getVdu()) {
+      for (VNFComponent vnfc : vdu.getVnfc()) {
+        for (VNFDConnectionPoint cp : vnfc.getConnection_point()) {
+          virtualLinks.add(cp.getVirtual_link_reference());
+        }
+      }
+    }
+    for (String vl : virtualLinks) variables += ("export " + vl + "=`unit-get private-address`\n");
+    // TODO floating ips
+    variables += "export hostname=`hostname`\n";
+    try {
+      log.info("Write variables to paramVariables file: " + variables);
+      Files.write(
+          Paths.get(paramVariables.getAbsolutePath()),
+          variables.getBytes(),
+          StandardOpenOption.APPEND);
+    } catch (IOException e) {
+      log.error("Could not write out-of-the-box variables to paramVariables file");
+    }
+
+    // and now the out-of-the-box variables <netname>, <netname>_floatingIp and hostname of the other VNFDs
+    variables = "";
     for (String sourceVnfName : getNetworkService(nsId).getSourcesNames(vnfr.getName())) {
       VirtualNetworkFunctionRecord sourceVnfr =
           getNetworkService(nsId).getVnfrByName(sourceVnfName);
@@ -711,10 +964,9 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       }
 
       for (String vl : virtuaLinks)
-        variables +=
-            ("export " + sourceVnfr.getType() + "_" + vl + "=`relation-get " + vl + "`;\n");
+        variables += ("export " + sourceVnfr.getType() + "_" + vl + "=`relation-get " + vl + "`\n");
       // TODO floating ips
-      variables += "export " + sourceVnfr.getType() + "_" + "hostname=`relation-get hostname`;\n";
+      variables += "export " + sourceVnfr.getType() + "_" + "hostname=`relation-get hostname`\n";
 
       for (ConfigurationParameter confParam :
           sourceVnfr.getConfigurations().getConfigurationParameters()) {
@@ -727,7 +979,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                 + sourceVnfr.getType()
                 + "_"
                 + confParam.getConfKey()
-                + "`;\n";
+                + "`\n";
       }
 
       try {
@@ -1133,5 +1385,13 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
 
   public static void main(String[] args) {
     SpringApplication.run(JujuVnfm.class, args);
+  }
+
+  public void setScriptPath(String scriptPath) {
+    this.scriptPath = scriptPath;
+  }
+
+  public String getScriptPath() {
+    return this.scriptPath;
   }
 }

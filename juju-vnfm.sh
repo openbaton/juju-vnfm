@@ -108,7 +108,7 @@ function kill {
 
 
 function compile {
-    ./gradlew build -x test 
+    ./gradlew goJF build -x test
 }
 
 function tests {
