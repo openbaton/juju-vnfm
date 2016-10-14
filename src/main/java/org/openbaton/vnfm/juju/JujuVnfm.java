@@ -613,8 +613,24 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                 try {
                   Files.write(
                       Paths.get(relationChanged.getAbsolutePath()),
-                      ("pushd scripts \nbash " // TODO test
+                      ("pushd scripts \necho \"`date '+%H-%M-%S'` "
+                              + vnfr.getName()
+                              + ": execute "
                               + scriptName
+                              + "\" >> "
+                              + scriptLogPath
+                              + "/"
+                              + vnfr.getName()
+                              + "\nbash " // TODO test
+                              + scriptName
+                              + "\necho \"`date '+%H-%M-%S'` "
+                              + vnfr.getName()
+                              + ": finished "
+                              + scriptName
+                              + "\" >> "
+                              + scriptLogPath
+                              + "/"
+                              + vnfr.getName()
                               + "\npopd \ntouch hooks/finishedConfigureScripts/"
                               + scriptName
                               + "\n")
@@ -688,9 +704,9 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                   Paths.get(f.getAbsolutePath()),
                   ("echo \"`date '+%H-%M-%S'` "
                           + vnfr.getName()
-                          + ": Need "
+                          + ": ($(ls -1 hooks/finishedConfigureScripts/ | wc -l)/"
                           + numberOfConfigureScripts
-                          + " scripts run before executing startAfterDependencies. Currently there were run $(ls -1 hooks/finishedConfigureScripts/ | wc -l)\" >> "
+                          + ") scripts finished before executing startAfterDependencies.\" >> "
                           + scriptLogPath
                           + "/"
                           + vnfr.getName()
