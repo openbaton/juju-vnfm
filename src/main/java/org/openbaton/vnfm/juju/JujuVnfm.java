@@ -584,7 +584,22 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                   try {
                     Files.write(
                         Paths.get(relationChanged.getAbsolutePath()),
-                        ("#!/bin/bash\nexport allRelationParametersAreReady=`relation-get allRelationParametersAreReady`\nif [ \"$allRelationParametersAreReady\" != \"true\" ]; then\n  echo \"`date '+%H-%M-%S'` "
+                        ("#!/bin/bash\n"
+                                + "if [ -f hooks/finishedRelationChangedHooks/"
+                                + relationChanged.getName()
+                                + " ]; then\n"
+                                + "  echo \"`date '+%H-%M-%S'` "
+                                + vnfr.getName()
+                                + ": "
+                                + relationChanged.getName()
+                                + " hook was already executed. Do not run it again.\" >> "
+                                + scriptLogPath
+                                + "/"
+                                + vnfr.getName()
+                                + "\n"
+                                + "  exit 0\n"
+                                + "fi\n"
+                                + "export allRelationParametersAreReady=`relation-get allRelationParametersAreReady`\nif [ \"$allRelationParametersAreReady\" != \"true\" ]; then\n  echo \"`date '+%H-%M-%S'` "
                                 + vnfr.getName()
                                 + ": The relation parameters are not yet set. Abort "
                                 + virtualNetworkFunctionRecord.getName()
@@ -671,6 +686,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                   }
                 }
               }
+              if (!runConfigureScripts.exists()) runConfigureScripts.createNewFile();
               try {
                 Files.write(
                     Paths.get(runConfigureScripts.getAbsolutePath()),
@@ -678,6 +694,38 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                     StandardOpenOption.APPEND);
               } catch (IOException e) {
                 log.error("Could not write to runConfigureScripts file");
+              }
+            }
+          }
+
+          // add notification that a relation changed hook was run
+          if (relationChangedList != null && !relationChangedList.isEmpty()) {
+            (new File(
+                    "/tmp/openbaton/juju/"
+                        + nsId
+                        + "/"
+                        + vnfr.getName()
+                        + "/hooks/finishedRelationChangedHooks"))
+                .mkdirs();
+            for (File f : relationChangedList) {
+              try {
+                Files.write(
+                    Paths.get(f.getAbsolutePath()),
+                    ("touch hooks/finishedRelationChangedHooks/"
+                            + f.getName()
+                            + "\necho \"`date '+%H-%M-%S'` "
+                            + vnfr.getName()
+                            + ": finished "
+                            + f.getName()
+                            + " hook\" >> "
+                            + scriptLogPath
+                            + "/"
+                            + vnfr.getName()
+                            + "\n")
+                        .getBytes(), // TODO test
+                    StandardOpenOption.APPEND);
+              } catch (IOException e) {
+                log.error("Could not write to " + f.getName() + " file");
               }
             }
           }
@@ -1163,6 +1211,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
     ProcessBuilder pb;
     Process execute = null;
     int exitStatus = -1;
+
     //        bootstrapJuju();
     log.debug(
         "juju deploy /tmp/openbaton/juju/"
@@ -1171,7 +1220,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
             + vnfr
             + " -n "
             + numberOfUnits
-            + " --series=trusty");
+            + " --series=trusty; juju expose");
     pb =
         new ProcessBuilder(
             "/bin/bash",

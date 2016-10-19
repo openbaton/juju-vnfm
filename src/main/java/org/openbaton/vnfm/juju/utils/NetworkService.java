@@ -1,6 +1,9 @@
 package org.openbaton.vnfm.juju.utils;
 
+import org.openbaton.catalogue.mano.common.ConnectionPoint;
+import org.openbaton.catalogue.mano.descriptor.VirtualDeploymentUnit;
 import org.openbaton.catalogue.mano.descriptor.VirtualNetworkFunctionDescriptor;
+import org.openbaton.catalogue.mano.record.VNFCInstance;
 import org.openbaton.catalogue.mano.record.VirtualNetworkFunctionRecord;
 import org.openbaton.catalogue.nfvo.VNFPackage;
 
