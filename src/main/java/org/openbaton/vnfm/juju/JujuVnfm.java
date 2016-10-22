@@ -48,6 +48,17 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
   @Value("${vnfm.script-path:/opt/openbaton/scripts}")
   private String scriptPath;
 
+  @Value("${vnfm.series:trusty}")
+  private String series;
+
+  public String getSeries() {
+    return series;
+  }
+
+  public void setSeries(String series) {
+    this.series = series;
+  }
+
   public String getScriptLogPath() {
     return scriptLogPath;
   }
@@ -1220,7 +1231,9 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
             + vnfr
             + " -n "
             + numberOfUnits
-            + " --series=trusty; juju expose");
+            + " --series="
+            + series
+            + "; juju expose");
     pb =
         new ProcessBuilder(
             "/bin/bash",
@@ -1231,7 +1244,9 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
                 + vnfr
                 + " -n "
                 + numberOfUnits
-                + " --series=trusty; juju expose "
+                + " --series="
+                + series
+                + "; juju expose "
                 + vnfr);
     try {
       execute = pb.redirectOutput(ProcessBuilder.Redirect.INHERIT).start();
