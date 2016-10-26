@@ -1404,17 +1404,6 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
   public void query() {}
 
   @Override
-  public VirtualNetworkFunctionRecord scale(
-      Action scaleInOrOut,
-      VirtualNetworkFunctionRecord virtualNetworkFunctionRecord,
-      VNFCInstance component,
-      Object scripts,
-      VNFRecordDependency dependency)
-      throws Exception {
-    return virtualNetworkFunctionRecord;
-  }
-
-  @Override
   public void checkInstantiationFeasibility() {}
 
   @Override
@@ -1427,7 +1416,10 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
   }
 
   @Override
-  public void updateSoftware() {}
+  public VirtualNetworkFunctionRecord updateSoftware(
+      Script script, VirtualNetworkFunctionRecord virtualNetworkFunctionRecord) throws Exception {
+    return virtualNetworkFunctionRecord;
+  }
 
   @Override
   public VirtualNetworkFunctionRecord modify(
@@ -1483,6 +1475,26 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
   @Override
   public VirtualNetworkFunctionRecord configure(
       VirtualNetworkFunctionRecord virtualNetworkFunctionRecord) throws Exception {
+    return virtualNetworkFunctionRecord;
+  }
+
+  @Override
+  public VirtualNetworkFunctionRecord resume(
+      VirtualNetworkFunctionRecord virtualNetworkFunctionRecord,
+      VNFCInstance vnfcInstance,
+      VNFRecordDependency dependency)
+      throws Exception {
+    return virtualNetworkFunctionRecord;
+  }
+
+  @Override
+  public VirtualNetworkFunctionRecord scale(
+      Action scaleInOrOut,
+      VirtualNetworkFunctionRecord virtualNetworkFunctionRecord,
+      VNFComponent component,
+      Object scripts,
+      VNFRecordDependency dependency)
+      throws Exception {
     return virtualNetworkFunctionRecord;
   }
 
