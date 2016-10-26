@@ -1223,7 +1223,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
       }
     }
 
-    //    removeDirectory(new File("/tmp/openbaton/juju/" + networkService.getId()));
+    removeDirectory(new File("/tmp/openbaton/juju/" + networkService.getId()));
   }
 
   /**
