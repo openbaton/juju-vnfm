@@ -12,7 +12,7 @@ The Juju VNF Manager enables the Open Baton NFVO to interoperat with Juju as a g
 
 Please be careful in reading the list of unsupported functionalities in the next section. Those functionalities are part of the roadmap of this component and will be available in the next releases.  
 
-# Constraints and future work
+## Constraints and future work
 Here is a list of known constraints and features that do not work at the moment. 
 
 In case you are planning to use the Juju VNFM to deploy Open Baton VNF Packages keep in mind that: 
@@ -34,14 +34,14 @@ In general, keep in mind that:
 
 These list of issues is something we are working on for the future release.
 
-# Requirements
+## Requirements
 
 * A running NFVO (> v2.1.3)
 * A running Juju instance with a controller named *obcontroller*. Please refer to the juju [installation guide](installation-guide)
 * The Juju-VNFM needs to run on the same machine where Juju is installed
 
 
-# How to install the Juju VNF Manager from source code
+## How to install the Juju VNF Manager from source code
 
 Git clone the project into the /opt/openbaton directory (you may need to be logged in as root user, unless you change the permissions on the /opt/openbaton folder): 
 
@@ -57,7 +57,7 @@ cd /opt/openbaton/juju-vnfm; ./juju-vnfm.sh compile
 ```
 to compile it. 
 
-# Configure the Juju VNF Manager
+## Configure the Juju VNF Manager
 
 The Juju VNF Manager uses rabbitmq to communicate with the NFVO. 
 If you want to run the Juju VNF Manager on another machine than on which rabbitmq is running you first have to configure it.  
@@ -69,7 +69,7 @@ If you decided to create the file */etc/openbaton/juju-vnfm.properties* the Juju
 that all the properties from the file *application.properties* are present.  
 
 
-# How to control the Juju VNF Manager
+## How to control the Juju VNF Manager
 
 To start the Juju VNF Manager execute
 
@@ -91,7 +91,7 @@ The cloudname specifies where the controller will run and instantiate the model 
 This step is fairly important and may differ depending on which cloud you want to use. 
 Take a look at the tutorial sections down below to see an example for Openstack. 
 
-# How to use the Juju VNF Manager
+## How to use the Juju VNF Manager
 
 
 To use the Juju VNF Manager for deploying a network service you have to store a VimInstance with type *test* in the NFVO 
@@ -106,7 +106,7 @@ This is currently a fairly simple mechanism and does not provide further integra
 So it is not possible to include a VNFD that specifies a Juju Charm that has dependencies to other VNFDs or to pass configurations while deploying the Charm. 
 
  
-# How it works
+## How it works
 
 The Juju VNFM translates Open Baton NSD's into Juju Charms, stores them in directories in */tmp/openbaton/juju* and deploys them 
 using an already running Juju controller.  
@@ -131,11 +131,11 @@ should be executed after the relation-changed hook which runs the CONFIGURE scri
 In these cases a *startAfterDependency* script will be created and the relation-changed hook will trigger its execution after it has finished. 
 
 
-# OpenIMS Tutorial with Juju-VNFM and Openstack
+## OpenIMS Tutorial with Juju-VNFM and Openstack
 
 This Tutorial will demonstrate how to deploy the OpenIMSCore implementation on Openstack using Open Baton and the Juju-VNFM. 
 
-## Requirements
+### Requirements
 
 * NFVO
 * Juju
@@ -143,7 +143,7 @@ This Tutorial will demonstrate how to deploy the OpenIMSCore implementation on O
 * Openstack
 * [OpenIMSCore packages][openimscore-github]
 
-## Configure Juju to work with Openstack
+### Configure Juju to work with Openstack
 
 Create a document called *mystack.yaml*. 
 Here you will provide the necessary information for Juju to connect to Openstack. 
@@ -176,12 +176,12 @@ The next step is to set credentials for the mystack cloud configuration. Execute
 juju add-credential mystack
 ```
 
-## Configure Openstack to work with Juju
+### Configure Openstack to work with Juju
 
 Then we also have to configure Openstack to provide an image usable by Juju. 
 For this please refer to [this][juju-private-cloud] guide. 
 
-## Bootstrap the environment
+### Bootstrap the environment
 
 Finally we can bootstrap the openstack environment using this command:
 
@@ -205,7 +205,7 @@ The $NETWORK_ID has to be the network's id from Openstack that shall be used.
 And the $SERIES should be set to an Ubuntu series according to the image you want to use. 
 By default the Juju-VNFM uses trusty while deploying. 
 
-## Deploy the OpenIMSCore
+### Deploy the OpenIMSCore
 
 Now that the setup is ready we can start looking at the actual deployment of the OpenIMSCore. 
 
@@ -241,29 +241,32 @@ Since the correct reporting of the deployment's status from the Juju-VNFM to the
 you should not rely on the NSR status shown by the Gui, but check using the *juju status* command. 
 
 
-# Issue tracker
+## Issue tracker
 
 Issues and bug reports should be posted to the GitHub Issue Tracker of this project
 
-# What is Open Baton?
+## What is Open Baton?
 
-OpenBaton is an open source project providing a comprehensive implementation of the ETSI Management and Orchestration (MANO) specification.
+Open Baton is an open source project providing a comprehensive implementation of the ETSI Management and Orchestration (MANO) specification and the TOSCA Standard.
 
-Open Baton is a ETSI NFV MANO compliant framework. Open Baton was part of the OpenSDNCore (www.opensdncore.org) project started almost three years ago by Fraunhofer FOKUS with the objective of providing a compliant implementation of the ETSI NFV specification. 
+Open Baton provides multiple mechanisms for interoperating with different VNFM vendor solutions. It has a modular archiecture which can be easily extended for supporting additional use cases. 
 
-Open Baton is easily extensible. It integrates with OpenStack, and provides a plugin mechanism for supporting additional VIM types. It supports Network Service management either using a generic VNFM or interoperating with VNF-specific VNFM. It uses different mechanisms (REST or PUB/SUB) for interoperating with the VNFMs. It integrates with additional components for the runtime management of a Network Service. For instance, it provides autoscaling and fault management based on monitoring information coming from the monitoring system available at the NFVI level.
+It integrates with OpenStack as standard de-facto VIM implementation, and provides a driver mechanism for supporting additional VIM types. It supports Network Service management either using the provided Generic VNFM and Juju VNFM, or integrating additional specific VNFMs. It provides several mechanisms (REST or PUB/SUB) for interoperating with external VNFMs. 
 
-# Source Code and documentation
+It can be combined with additional components (Monitoring, Fault Management, Autoscaling, and Network Slicing Engine) for building a unique MANO comprehensive solution.
 
-The Source Code of the other Open Baton projects can be found [here][openbaton-github] and the documentation can be found [here][openbaton-doc] .
+## Source Code and documentation
 
-# News and Website
+The Source Code of the other Open Baton projects can be found [here][openbaton-github] and the documentation can be found [here][openbaton-doc]
+
+## News and Website
 
 Check the [Open Baton Website][openbaton]
-Follow us on Twitter @[openbaton][openbaton-twitter].
 
-# Licensing and distribution
-Copyright [2015-2016] Open Baton project
+Follow us on Twitter @[openbaton][openbaton-twitter]
+
+## Licensing and distribution
+Copyright © [2015-2016] Open Baton project
 
 Licensed under the Apache License, Version 2.0 (the "License");
 
@@ -278,12 +281,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-# Support
+## Support
 The Open Baton project provides community support through the Open Baton Public Mailing List and through StackOverflow using the tags openbaton.
 
-# Supported by
+## Supported by
   <img src="https://raw.githubusercontent.com/openbaton/openbaton.github.io/master/images/fokus.png" width="250"/><img src="https://raw.githubusercontent.com/openbaton/openbaton.github.io/master/images/tu.png" width="150"/>
-
 
 [fokus-logo]: https://raw.githubusercontent.com/openbaton/openbaton.github.io/master/images/fokus.png
 [installation-guide]: https://jujucharms.com/docs/stable/getting-started
