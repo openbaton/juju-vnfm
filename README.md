@@ -1,7 +1,6 @@
   <img src="https://raw.githubusercontent.com/openbaton/openbaton.github.io/master/images/openBaton.png" width="250"/>
   
-  Copyright © 2015-2016 [Open Baton](http://openbaton.org). 
-  Licensed under [Apache v2 License](http://www.apache.org/licenses/LICENSE-2.0).
+  Copyright © 2015-2016 [Open Baton](http://openbaton.org). Licensed under [Apache v2 License](http://www.apache.org/licenses/LICENSE-2.0).
 
 
 # Juju VNF Manager (Beta version)
@@ -37,8 +36,8 @@ These list of issues is something we are working on for the future release.
 ## Requirements
 
 * A running NFVO (> v2.1.3)
-* A running Juju instance with a controller named *obcontroller*. Please refer to the juju [installation guide](installation-guide)
-* The Juju-VNFM needs to run on the same machine where Juju is installed
+* A running Juju instance with a controller named *obcontroller*. Please refer to the juju [installation guide][installation-guide]
+* The Juju-VNFM needs to run on the same machine where Juju is installed. Please make sure that you have also a JDK installed in order to compile this source code. 
 
 
 ## How to install the Juju VNF Manager from source code
@@ -46,6 +45,7 @@ These list of issues is something we are working on for the future release.
 Git clone the project into the /opt/openbaton directory (you may need to be logged in as root user, unless you change the permissions on the /opt/openbaton folder): 
 
 ```bash
+sudo apt-get install openjdk-7-jdk #in case you don't have java installed
 mkdir /opt/openbaton
 git clone https://github.com/openbaton/juju-vnfm.git
 ```
@@ -81,7 +81,7 @@ To start the Juju VNF Manager execute
 This will create a new screen window which you can access using *screen -x openbaton*.  
 You have to run the Juju VNFM on the same machine on which Juju runs. 
 Furthermore Juju has to contain a controller named *obcontroller*. 
-You can bootsrap a controller by executing (you can see more details on the juju [installation guide](installation-juju-create-container))
+You can bootsrap a controller by executing (you can see more details on the juju [installation guide][installation-juju-create-container]
 
 ```bash
 juju bootstrap obcontroller {cloudname}
