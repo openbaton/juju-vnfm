@@ -39,6 +39,16 @@ These list of issues is something we are working on for the future release.
 * A running Juju instance with a controller named *obcontroller*. Please refer to the juju [installation guide][installation-guide]
 * The Juju-VNFM needs to run on the same machine where Juju is installed. Please make sure that you have also a JDK installed in order to compile this source code. 
 
+Juju has to contain a controller named *obcontroller*. You can bootsrap a controller by executing (you can see more details on the juju [installation guide][installation-juju-create-container]
+
+```bash
+juju bootstrap obcontroller {cloudname}
+```
+
+The cloudname specifies where the controller will run and instantiate the model (e.g. lxd, openstack). 
+This step is fairly important and may differ depending on which cloud you want to use. 
+Take a look at the tutorial sections down below to see an example for Openstack. 
+
 
 ## How to install the Juju VNF Manager from source code
 
@@ -59,15 +69,15 @@ to compile it.
 
 ## Configure the Juju VNF Manager
 
-The Juju VNF Manager uses rabbitmq to communicate with the NFVO. 
-If you want to run the Juju VNF Manager on another machine than on which rabbitmq is running you first have to configure it.  
-Either you use the *application.properties* file in the project's resources folder to configure it or you create the file 
-*/etc/openbaton/juju-vnfm.properties*, copy the previously mentioned *application.properties* file's content into it 
-and configure it there.  
-Then change the properties *spring.rabbitmq.host* and *spring.rabbitmq.port* to the ip address and host on which rabbitmq are running and compile again.  
-If you decided to create the file */etc/openbaton/juju-vnfm.properties* the Juju VNF Manager will only use this one so make sure 
-that all the properties from the file *application.properties* are present.  
+The Juju VNF Manager uses AMQP to communicate with the NFVO, therefore it needs to reach RabbitMQ in order to properly register with the NFVO.  
+In order to configure the VNFM to reach the proper NFVO you need to modify the juju configuration file. First of all, copy the application.properties file into the following location
 
+```bash
+sudo mkdir /etc/openbaton/ # in case it does not exists
+sudo cp src/main/resources/application.properties /etc/openbaton/
+```
+
+Then change open it with your favourite editor and modify the properties *spring.rabbitmq.host* and *spring.rabbitmq.port* adding the ip address and port on which rabbitmq is running. Please make sure to update also the *spring.rabbitmq.username* and *spring.rabbitmq.password* with the one used also on the NFVO side. 
 
 ## How to control the Juju VNF Manager
 
@@ -78,18 +88,7 @@ To start the Juju VNF Manager execute
  ./juju-vnfm.sh start
  ```
 
-This will create a new screen window which you can access using *screen -x openbaton*.  
-You have to run the Juju VNFM on the same machine on which Juju runs. 
-Furthermore Juju has to contain a controller named *obcontroller*. 
-You can bootsrap a controller by executing (you can see more details on the juju [installation guide][installation-juju-create-container]
-
-```bash
-juju bootstrap obcontroller {cloudname}
-```
-
-The cloudname specifies where the controller will run and instantiate the model (e.g. lxd, openstack). 
-This step is fairly important and may differ depending on which cloud you want to use. 
-Take a look at the tutorial sections down below to see an example for Openstack. 
+This will create a new screen window which you can access using *screen -x openbaton*. 
 
 ## How to use the Juju VNF Manager
 
@@ -249,7 +248,7 @@ Issues and bug reports should be posted to the GitHub Issue Tracker of this proj
 
 Open Baton is an open source project providing a comprehensive implementation of the ETSI Management and Orchestration (MANO) specification and the TOSCA Standard.
 
-Open Baton provides multiple mechanisms for interoperating with different VNFM vendor solutions. It has a modular archiecture which can be easily extended for supporting additional use cases. 
+Open Baton provides multiple mechanisms for interoperating with different VNFM vendor solutions. It has a modular architecture which can be easily extended for supporting additional use cases. 
 
 It integrates with OpenStack as standard de-facto VIM implementation, and provides a driver mechanism for supporting additional VIM types. It supports Network Service management either using the provided Generic VNFM and Juju VNFM, or integrating additional specific VNFMs. It provides several mechanisms (REST or PUB/SUB) for interoperating with external VNFMs. 
 
