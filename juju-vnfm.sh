@@ -30,31 +30,6 @@ if [ "$_user" != 'root' ]; then
     fi
 fi
 
-
-function check_rabbitmq {
-    if [[ "$OSTYPE" == "linux-gnu" ]]; then
-	ps -aux | grep -v grep | grep rabbitmq > /dev/null
-        if [ $? -ne 0 ]; then
-          	echo "rabbit is not running, let's try to start it..."
-            	start_rabbitmq
-        fi
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-	ps aux | grep -v grep | grep rabbitmq > /dev/null
-        if [ $? -ne 0 ]; then
-          	echo "rabbitmq is not running, let's try to start it..."
-            	start_rabbitmq
-        fi
-    fi
-}
-
-function start_rabbitmq {
-    $_ex 'rabbitmq-server -detached'
-    if [ $? -ne 0 ]; then
-        echo "ERROR: rabbitmq is not running properly (check the problem in /var/log/rabbitmq.log) "
-        exit 1
-    fi
-}
-
 function check_already_running {
     pgrep -f juju-vnfm-${_version}.jar
     if [ "$?" -eq "0" ]; then
@@ -70,17 +45,17 @@ function start {
         then
             compile
     fi
-    check_rabbitmq
     check_already_running
-    screen_exists=$(screen -ls | grep openbaton | wc -l);
-    if [ "${screen_exists}" -eq "0" ]; then
+    screen -ls | grep -v "No Sockets found" | grep -q openbaton
+    screen_exists=$?
+    if [ "${screen_exists}" -ne "0" ]; then
 	    echo "Starting the Juju VNFM Adapter in a new screen session (attach to the screen with screen -x openbaton)"
 	    if [ -f ${_openbaton_config_file} ]; then
             screen -c screenrc -d -m -S openbaton -t ${_screen_name} java -jar "${_juju_vnfm_base}/build/libs/juju-vnfm-${_version}.jar" --spring.config.location=file:${_openbaton_config_file}
         else
             screen -c screenrc -d -m -S openbaton -t ${_screen_name} java -jar "${_juju_vnfm_base}/build/libs/juju-vnfm-${_version}.jar"
         fi
-    elif [ "${screen_exists}" -ne "0" ]; then
+    elif [ "${screen_exists}" -eq "0" ]; then
         echo "Starting the Juju VNFM Adapter in the existing screen session (attach to the screen with screen -x openbaton)"
         if [ -f ${_openbaton_config_file} ]; then
             screen -S openbaton -X screen -t ${_screen_name} java -jar "${_juju_vnfm_base}/build/libs/juju-vnfm-${_version}.jar" --spring.config.location=file:${_openbaton_config_file}
