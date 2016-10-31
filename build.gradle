@@ -54,7 +54,7 @@ repositories {
 }
 
 dependencies {
-    compile 'org.openbaton:vnfm-sdk-amqp:3.0.0-RC1'
+    compile 'org.openbaton:vnfm-sdk-amqp:3.0.0'
     compile 'org.ini4j:ini4j:0.5.4'
     compile 'org.hibernate:hibernate-core:4.3.10.Final'
 
