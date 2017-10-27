@@ -35,7 +35,7 @@ These list of issues is something we are working on for the future release.
 
 ## Requirements
 
-* A running NFVO (> v2.1.3)
+* A running NFVO (version 5.x.x)
 * A running Juju 2.0 instance with a controller named *obcontroller*. Please refer to the juju [installation guide][installation-guide]
 * The Juju-VNFM needs to run on the same machine where Juju is installed. Please make sure that you have also a JDK installed in order to compile this source code. 
 

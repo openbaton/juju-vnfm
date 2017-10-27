@@ -102,7 +102,7 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
   }
 
   @Override
-  protected synchronized void onAction(NFVMessage message)
+  protected synchronized NFVMessage onAction(NFVMessage message)
       throws NotFoundException, BadFormatException {
 
     VirtualNetworkFunctionRecord virtualNetworkFunctionRecord = null;
@@ -266,32 +266,28 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
           break;
       }
 
-      if (nfvMessage != null) {
-        log.debug("send to NFVO");
-        vnfmHelper.sendToNfvo(nfvMessage);
-      }
-
     } catch (Exception e) {
       log.error("ERROR: ", e);
       if (e instanceof VnfmSdkException) {
         VnfmSdkException vnfmSdkException = (VnfmSdkException) e;
         if (vnfmSdkException.getVnfr() != null) {
-          log.debug("sending VNFR with version: " + vnfmSdkException.getVnfr().getHb_version());
+          log.debug("sending VNFR with version: " + vnfmSdkException.getVnfr().getHbVersion());
           vnfmHelper.sendToNfvo(
               VnfmUtils.getNfvErrorMessage(vnfmSdkException.getVnfr(), vnfmSdkException, nsrId));
-          return;
+          return nfvMessage;
         }
       } else if (e.getCause() instanceof VnfmSdkException) {
         VnfmSdkException vnfmSdkException = (VnfmSdkException) e.getCause();
         if (vnfmSdkException.getVnfr() != null) {
-          log.debug("sending VNFR with version: " + vnfmSdkException.getVnfr().getHb_version());
+          log.debug("sending VNFR with version: " + vnfmSdkException.getVnfr().getHbVersion());
           vnfmHelper.sendToNfvo(
               VnfmUtils.getNfvErrorMessage(vnfmSdkException.getVnfr(), vnfmSdkException, nsrId));
-          return;
+          return nfvMessage;
         }
       }
       vnfmHelper.sendToNfvo(VnfmUtils.getNfvErrorMessage(virtualNetworkFunctionRecord, e, nsrId));
     }
+    return nfvMessage;
   }
 
   /**
@@ -1439,12 +1435,6 @@ public class JujuVnfm extends AbstractVnfmSpringAmqp {
 
   @Override
   public void handleError(VirtualNetworkFunctionRecord virtualNetworkFunctionRecord) {}
-
-  @Override
-  protected void checkEMS(String hostname) {}
-
-  @Override
-  protected void checkEmsStarted(String hostname) throws RuntimeException {}
 
   @Override
   public VirtualNetworkFunctionRecord start(
